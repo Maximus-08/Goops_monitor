@@ -28,3 +28,12 @@ func (m *Metrics) RecordDown() {
 	m.Downs++
 	log.Println("Recorded DOWN status")
 }
+
+func (m *Metrics) GetStats() map[string]int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return map[string]int{
+		"ups":   m.Ups,
+		"downs": m.Downs,
+	}
+}
