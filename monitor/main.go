@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"goops-monitor/runner"
 	"log"
 	"net/http"
 	"os"
@@ -23,6 +24,9 @@ func main() {
 	metrics = NewMetrics()
 
 	fmt.Printf("Starting monitor for %s with interval %v\n", cfg.Target, cfg.Interval)
+
+	// Start API server
+	go StartAPI(":8081")
 
 	// Start a local test server for demonstration
 	go startServer(":8080")
@@ -52,6 +56,7 @@ func checkStatus(cfg *Config) {
 	if err != nil {
 		log.Printf("DOWN: %s (%v)", cfg.Target, err)
 		metrics.RecordDown()
+		executeRemediation(cfg.OnFailure)
 		return
 	}
 	defer resp.Body.Close()
@@ -62,5 +67,18 @@ func checkStatus(cfg *Config) {
 	} else {
 		log.Printf("DOWN: %s (Status: %d)", cfg.Target, resp.StatusCode)
 		metrics.RecordDown()
+		executeRemediation(cfg.OnFailure)
+	}
+}
+
+func executeRemediation(script string) {
+	if script == "" {
+		return
+	}
+	
+	log.Printf("Executing remediation: %s", script)
+	r := runner.New("sh", "-c", script)
+	if err := r.Execute(); err != nil {
+		log.Printf("Remediation failed: %v", err)
 	}
 }
