@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -23,7 +24,7 @@ func main() {
 	// Initialize metrics
 	metrics = NewMetrics()
 
-	fmt.Printf("Starting monitor for %s with interval %v\n", cfg.Target, cfg.Interval)
+	fmt.Printf("Starting monitor for %d targets with interval %v\n", len(cfg.Targets), cfg.Interval)
 
 	// Start API server
 	go StartAPI(":8081")
@@ -41,33 +42,41 @@ func main() {
 	for {
 		select {
 		case <-ticker.C:
-			checkStatus(cfg)
+			var wg sync.WaitGroup
+			for _, target := range cfg.Targets {
+				wg.Add(1)
+				go func(t string) {
+					defer wg.Done()
+					checkStatus(t, cfg.OnFailure)
+				}(target)
+			}
+			wg.Wait()
 		case <-sigChan:
 			fmt.Println("\nShutting down gracefully...")
 			stats := metrics.GetStats()
-			fmt.Printf("Final stats - Ups: %d, Downs: %d\n", stats["ups"], stats["downs"])
+			fmt.Printf("Final stats: %+v\n", stats)
 			return
 		}
 	}
 }
 
-func checkStatus(cfg *Config) {
-	resp, err := http.Get(cfg.Target + "/health")
+func checkStatus(target string, onFailure string) {
+	resp, err := http.Get(target + "/health")
 	if err != nil {
-		log.Printf("DOWN: %s (%v)", cfg.Target, err)
-		metrics.RecordDown()
-		executeRemediation(cfg.OnFailure)
+		log.Printf("DOWN: %s (%v)", target, err)
+		metrics.RecordDown(target)
+		executeRemediation(onFailure)
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		log.Printf("UP: %s (Status: %d)", cfg.Target, resp.StatusCode)
-		metrics.RecordUp()
+		log.Printf("UP: %s (Status: %d)", target, resp.StatusCode)
+		metrics.RecordUp(target)
 	} else {
-		log.Printf("DOWN: %s (Status: %d)", cfg.Target, resp.StatusCode)
-		metrics.RecordDown()
-		executeRemediation(cfg.OnFailure)
+		log.Printf("DOWN: %s (Status: %d)", target, resp.StatusCode)
+		metrics.RecordDown(target)
+		executeRemediation(onFailure)
 	}
 }
 

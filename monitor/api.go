@@ -25,8 +25,16 @@ func handleMetrics(w http.ResponseWriter, r *http.Request) {
 
 func handleStatus(w http.ResponseWriter, r *http.Request) {
 	stats := metrics.GetStats()
+	allHealthy := true
+	for _, s := range stats {
+		if s.Downs > 0 {
+			allHealthy = false
+			break
+		}
+	}
+	
 	status := map[string]interface{}{
-		"healthy": stats["downs"] == 0,
+		"healthy": allHealthy,
 		"metrics": stats,
 	}
 	w.Header().Set("Content-Type", "application/json")

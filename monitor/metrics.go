@@ -6,34 +6,51 @@ import (
 )
 
 type Metrics struct {
-	Ups   int
-	Downs int
+	Stats map[string]*TargetStats
 	mu    sync.Mutex
 }
 
+type TargetStats struct {
+	Ups   int `json:"ups"`
+	Downs int `json:"downs"`
+}
+
 func NewMetrics() *Metrics {
-	return &Metrics{}
-}
-
-func (m *Metrics) RecordUp() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.Ups++
-	log.Println("Recorded UP status")
-}
-
-func (m *Metrics) RecordDown() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.Downs++
-	log.Println("Recorded DOWN status")
-}
-
-func (m *Metrics) GetStats() map[string]int {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return map[string]int{
-		"ups":   m.Ups,
-		"downs": m.Downs,
+	return &Metrics{
+		Stats: make(map[string]*TargetStats),
 	}
+}
+
+func (m *Metrics) RecordUp(target string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	
+	if _, ok := m.Stats[target]; !ok {
+		m.Stats[target] = &TargetStats{}
+	}
+	m.Stats[target].Ups++
+	log.Printf("Recorded UP status for %s", target)
+}
+
+func (m *Metrics) RecordDown(target string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	
+	if _, ok := m.Stats[target]; !ok {
+		m.Stats[target] = &TargetStats{}
+	}
+	m.Stats[target].Downs++
+	log.Printf("Recorded DOWN status for %s", target)
+}
+
+func (m *Metrics) GetStats() map[string]*TargetStats {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	
+	// Return a copy to be safe
+	copy := make(map[string]*TargetStats)
+	for k, v := range m.Stats {
+		copy[k] = &TargetStats{Ups: v.Ups, Downs: v.Downs}
+	}
+	return copy
 }

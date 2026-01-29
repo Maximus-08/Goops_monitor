@@ -9,7 +9,7 @@ import (
 // Config holds the application configuration.
 type Config struct {
 	Interval  time.Duration `json:"interval"`
-	Target    string        `json:"target"`
+	Targets   []string      `json:"targets"`
 	OnFailure string        `json:"on_failure"`
 }
 

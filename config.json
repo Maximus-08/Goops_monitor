@@ -1,5 +1,7 @@
 {
     "interval": "5s",
-    "target": "http://localhost:8080",
+    "targets": [
+        "http://localhost:8080"
+    ],
     "on_failure": ""
 }
