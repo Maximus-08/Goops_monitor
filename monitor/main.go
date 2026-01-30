@@ -47,7 +47,7 @@ func main() {
 				wg.Add(1)
 				go func(t string) {
 					defer wg.Done()
-					checkStatus(t, cfg.OnFailure)
+					checkStatus(t, cfg.OnFailure, cfg.Retries)
 				}(target)
 			}
 			wg.Wait()
@@ -60,22 +60,40 @@ func main() {
 	}
 }
 
-func checkStatus(target string, onFailure string) {
-	resp, err := http.Get(target + "/health")
+func checkStatus(target string, onFailure string, maxRetries int) {
+	var resp *http.Response
+	var err error
+	
+	start := time.Now()
+	
+	for i := 0; i <= maxRetries; i++ {
+		if i > 0 {
+			log.Printf("Retrying check for %s (%d/%d)...", target, i, maxRetries)
+			time.Sleep(1 * time.Second)
+		}
+		
+		resp, err = http.Get(target + "/health")
+		if err == nil {
+			break
+		}
+	}
+	
+	duration := time.Since(start)
+	
 	if err != nil {
-		log.Printf("DOWN: %s (%v)", target, err)
-		metrics.RecordDown(target)
+		log.Printf("DOWN: %s (%v) - Latency: %v", target, err, duration)
+		metrics.RecordDown(target, duration)
 		executeRemediation(onFailure)
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		log.Printf("UP: %s (Status: %d)", target, resp.StatusCode)
-		metrics.RecordUp(target)
+		log.Printf("UP: %s (Status: %d) - Latency: %v", target, resp.StatusCode, duration)
+		metrics.RecordUp(target, duration)
 	} else {
-		log.Printf("DOWN: %s (Status: %d)", target, resp.StatusCode)
-		metrics.RecordDown(target)
+		log.Printf("DOWN: %s (Status: %d) - Latency: %v", target, resp.StatusCode, duration)
+		metrics.RecordDown(target, duration)
 		executeRemediation(onFailure)
 	}
 }

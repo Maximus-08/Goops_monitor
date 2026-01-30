@@ -10,6 +10,7 @@ import (
 type Config struct {
 	Interval  time.Duration `json:"interval"`
 	Targets   []string      `json:"targets"`
+	Retries   int           `json:"retries"`
 	OnFailure string        `json:"on_failure"`
 }
 
@@ -18,6 +19,7 @@ func (c *Config) UnmarshalJSON(data []byte) error {
 	type Alias Config
 	aux := &struct {
 		Interval string `json:"interval"`
+		Retries  int    `json:"retries"`
 		*Alias
 	}{
 		Alias: (*Alias)(c),
