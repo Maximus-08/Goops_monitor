@@ -9,17 +9,19 @@ import (
 // Config holds the application configuration.
 type Config struct {
 	Interval  time.Duration `json:"interval"`
-	Targets   []string      `json:"targets"`
-	Retries   int           `json:"retries"`
-	OnFailure string        `json:"on_failure"`
+	Targets       []string      `json:"targets"`
+	Retries       int           `json:"retries"`
+	WebhookURL    string        `json:"webhook_url"`
+	AlertCooldown time.Duration `json:"alert_cooldown"`
+	OnFailure     string        `json:"on_failure"`
 }
 
 // UnmarshalJSON implements custom JSON unmarshaling for Config
 func (c *Config) UnmarshalJSON(data []byte) error {
 	type Alias Config
 	aux := &struct {
-		Interval string `json:"interval"`
-		Retries  int    `json:"retries"`
+		Interval      string `json:"interval"`
+		AlertCooldown string `json:"alert_cooldown"`
 		*Alias
 	}{
 		Alias: (*Alias)(c),
@@ -34,6 +36,14 @@ func (c *Config) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	c.Interval = duration
+
+	if aux.AlertCooldown != "" {
+		cooldown, err := time.ParseDuration(aux.AlertCooldown)
+		if err != nil {
+			return err
+		}
+		c.AlertCooldown = cooldown
+	}
 	
 	return nil
 }

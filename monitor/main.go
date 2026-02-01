@@ -24,6 +24,9 @@ func main() {
 	// Initialize metrics
 	metrics = NewMetrics()
 
+	// Initialize alerter
+	alerter := NewAlerter(cfg.WebhookURL, cfg.AlertCooldown)
+
 	fmt.Printf("Starting monitor for %d targets with interval %v\n", len(cfg.Targets), cfg.Interval)
 
 	// Start API server
@@ -47,7 +50,7 @@ func main() {
 				wg.Add(1)
 				go func(t string) {
 					defer wg.Done()
-					checkStatus(t, cfg.OnFailure, cfg.Retries)
+					checkStatus(t, cfg.OnFailure, cfg.Retries, alerter)
 				}(target)
 			}
 			wg.Wait()
@@ -60,7 +63,7 @@ func main() {
 	}
 }
 
-func checkStatus(target string, onFailure string, maxRetries int) {
+func checkStatus(target string, onFailure string, maxRetries int, alerter *Alerter) {
 	var resp *http.Response
 	var err error
 	
@@ -83,6 +86,7 @@ func checkStatus(target string, onFailure string, maxRetries int) {
 	if err != nil {
 		log.Printf("DOWN: %s (%v) - Latency: %v", target, err, duration)
 		metrics.RecordDown(target, duration)
+		alerter.SendAlert(target, err.Error())
 		executeRemediation(onFailure)
 		return
 	}
@@ -94,6 +98,7 @@ func checkStatus(target string, onFailure string, maxRetries int) {
 	} else {
 		log.Printf("DOWN: %s (Status: %d) - Latency: %v", target, resp.StatusCode, duration)
 		metrics.RecordDown(target, duration)
+		alerter.SendAlert(target, fmt.Sprintf("Status code: %d", resp.StatusCode))
 		executeRemediation(onFailure)
 	}
 }

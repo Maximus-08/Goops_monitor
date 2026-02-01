@@ -4,5 +4,7 @@
         "http://localhost:8080"
     ],
     "retries": 1,
+    "webhook_url": "",
+    "alert_cooldown": "1m",
     "on_failure": ""
 }
