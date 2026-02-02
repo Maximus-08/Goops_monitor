@@ -4,11 +4,14 @@ import (
 	"log"
 	"sync"
 	"time"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type Metrics struct {
-	Stats map[string]*TargetStats
-	mu    sync.Mutex
+	Stats         map[string]*TargetStats
+	upGauge       *prometheus.GaugeVec
+	latencyHist   *prometheus.HistogramVec
+	mu            sync.Mutex
 }
 
 type TargetStats struct {
@@ -19,9 +22,28 @@ type TargetStats struct {
 }
 
 func NewMetrics() *Metrics {
-	return &Metrics{
+	m := &Metrics{
 		Stats: make(map[string]*TargetStats),
+		upGauge: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "goops_target_up",
+				Help: "Current status of the target (1 = UP, 0 = DOWN)",
+			},
+			[]string{"target"},
+		),
+		latencyHist: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Name:    "goops_target_latency_seconds",
+				Help:    "Response latency in seconds",
+				Buckets: prometheus.DefBuckets,
+			},
+			[]string{"target"},
+		),
 	}
+	
+	prometheus.MustRegister(m.upGauge)
+	prometheus.MustRegister(m.latencyHist)
+	return m
 }
 
 func (m *Metrics) RecordUp(target string, duration time.Duration) {
@@ -35,6 +57,10 @@ func (m *Metrics) RecordUp(target string, duration time.Duration) {
 	s.Ups++
 	s.LastLatency = duration.Milliseconds()
 	s.TotalDuration += duration.Milliseconds()
+	
+	// Prometheus updates
+	m.upGauge.WithLabelValues(target).Set(1)
+	m.latencyHist.WithLabelValues(target).Observe(duration.Seconds())
 	
 	log.Printf("Recorded UP status for %s (Latency: %dms)", target, s.LastLatency)
 }
@@ -50,6 +76,10 @@ func (m *Metrics) RecordDown(target string, duration time.Duration) {
 	s.Downs++
 	s.LastLatency = duration.Milliseconds()
 	s.TotalDuration += duration.Milliseconds()
+	
+	// Prometheus updates
+	m.upGauge.WithLabelValues(target).Set(0)
+	m.latencyHist.WithLabelValues(target).Observe(duration.Seconds())
 	
 	log.Printf("Recorded DOWN status for %s (Latency: %dms)", target, s.LastLatency)
 }

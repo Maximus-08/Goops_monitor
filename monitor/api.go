@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // StartAPI starts the HTTP API server
@@ -17,10 +19,9 @@ func StartAPI(port string) {
 	}
 }
 
+// handleMetrics now uses Prometheus handler
 func handleMetrics(w http.ResponseWriter, r *http.Request) {
-	stats := metrics.GetStats()
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(stats)
+	promhttp.Handler().ServeHTTP(w, r)
 }
 
 func handleStatus(w http.ResponseWriter, r *http.Request) {
