@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -48,7 +50,7 @@ func (c *Config) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// LoadConfig reads configuration from a JSON file
+// LoadConfig reads configuration from a JSON file and applies env overrides
 func LoadConfig(path string) (*Config, error) {
 	file, err := os.ReadFile(path)
 	if err != nil {
@@ -60,9 +62,45 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, err
 	}
 
+	// Apply environment variable overrides
+	applyEnvOverrides(&cfg)
+
 	if cfg.Interval == 0 {
 		cfg.Interval = 10 * time.Second
 	}
 
 	return &cfg, nil
+}
+
+// applyEnvOverrides overrides config values with GOOPS_* environment variables
+func applyEnvOverrides(cfg *Config) {
+	if val := os.Getenv("GOOPS_INTERVAL"); val != "" {
+		if d, err := time.ParseDuration(val); err == nil {
+			cfg.Interval = d
+		}
+	}
+
+	if val := os.Getenv("GOOPS_TARGETS"); val != "" {
+		cfg.Targets = strings.Split(val, ",")
+	}
+
+	if val := os.Getenv("GOOPS_RETRIES"); val != "" {
+		if n, err := strconv.Atoi(val); err == nil {
+			cfg.Retries = n
+		}
+	}
+
+	if val := os.Getenv("GOOPS_WEBHOOK_URL"); val != "" {
+		cfg.WebhookURL = val
+	}
+
+	if val := os.Getenv("GOOPS_ALERT_COOLDOWN"); val != "" {
+		if d, err := time.ParseDuration(val); err == nil {
+			cfg.AlertCooldown = d
+		}
+	}
+
+	if val := os.Getenv("GOOPS_ON_FAILURE"); val != "" {
+		cfg.OnFailure = val
+	}
 }

@@ -1,6 +1,8 @@
 # goops-monitor
 
-[![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)](https://golang.org)
+[![Go Version](https://img.shields.io/badge/Go-1.23+-00ADD8?style=flat&logo=go)](https://golang.org)
+[![Build](https://github.com/Maximus-08/goops-monitor/actions/workflows/ci.yml/badge.svg)](https://github.com/Maximus-08/goops-monitor/actions/workflows/ci.yml)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat&logo=docker)](https://hub.docker.com)
 
 A lightweight, extensible monitoring and task execution framework written in Go.
 
@@ -47,10 +49,50 @@ go mod tidy
 ### Running the Monitor
 
 ```bash
-go run monitor/main.go
+go run monitor/*.go
 ```
 
 The monitor will start checking the configured target (default: `http://localhost:8080`) every 5 seconds.
+
+### Using Makefile
+
+```bash
+make build    # Build binary
+make run      # Build and run
+make test     # Run tests
+make docker   # Build Docker image
+make clean    # Clean build artifacts
+```
+
+### Docker
+
+Build and run with Docker:
+```bash
+docker build -t goops-monitor .
+docker run -p 8080:8080 -p 8081:8081 goops-monitor
+```
+
+With custom config:
+```bash
+docker run -p 8080:8080 -p 8081:8081 -v $(pwd)/config.json:/app/config.json goops-monitor
+```
+
+### Docker Compose
+
+For easier deployment:
+```bash
+docker-compose up -d
+```
+
+View logs:
+```bash
+docker-compose logs -f
+```
+
+Stop:
+```bash
+docker-compose down
+```
 
 ## Configuration
 
@@ -61,6 +103,24 @@ Create a `config.json` file:
   "interval": "10s",
   "target": "http://your-service:8080/health"
 }
+```
+
+## Environment Variables
+
+Override config.json with environment variables (useful for Docker):
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `GOOPS_INTERVAL` | Check interval | `30s` |
+| `GOOPS_TARGETS` | Comma-separated URLs | `http://app1:8080,http://app2:8080` |
+| `GOOPS_RETRIES` | Retry count | `3` |
+| `GOOPS_WEBHOOK_URL` | Alert webhook | `https://hooks.slack.com/...` |
+| `GOOPS_ALERT_COOLDOWN` | Alert cooldown | `5m` |
+| `GOOPS_ON_FAILURE` | Remediation script | `./restart.sh` |
+
+Example:
+```bash
+GOOPS_TARGETS="http://myservice:8080" GOOPS_INTERVAL="30s" ./monitor_bin
 ```
 
 ## Usage Examples

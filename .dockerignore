@@ -1,0 +1,9 @@
+*.log
+monitor_bin
+.git
+.gitignore
+Dockerfile
+docker-compose.yml
+Makefile
+.github
+README.md

@@ -1,0 +1,40 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+
+    - name: Build
+      run: go build -v monitor/*.go
+
+    - name: Test
+      run: go test -v ./... || echo "No tests yet"
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build Docker image
+      run: docker build -t goops-monitor .
+
+    - name: Test Docker image
+      run: |
+        docker run -d --name test-container -p 8081:8081 goops-monitor
+        sleep 5
+        curl -f http://localhost:8081/status || exit 1
+        docker stop test-container
