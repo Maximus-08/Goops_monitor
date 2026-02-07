@@ -3,17 +3,25 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"log"
 )
 
 func startServer(port string) {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			fmt.Fprintln(w, "goops-monitor test server")
+			fmt.Fprintln(w, "Endpoints: /health")
+			return
+		}
+		http.NotFound(w, r)
+	})
+	
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "OK")
 	})
 
-	log.Printf("Starting test server on %s", port)
+	LogInfo("Starting test server", "port", port)
 	if err := http.ListenAndServe(port, nil); err != nil {
-		log.Printf("Server failed: %v", err)
+		LogError("Server failed", "error", err.Error())
 	}
 }

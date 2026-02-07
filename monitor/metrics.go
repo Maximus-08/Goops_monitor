@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"sync"
 	"time"
 	"github.com/prometheus/client_golang/prometheus"
@@ -61,8 +60,6 @@ func (m *Metrics) RecordUp(target string, duration time.Duration) {
 	// Prometheus updates
 	m.upGauge.WithLabelValues(target).Set(1)
 	m.latencyHist.WithLabelValues(target).Observe(duration.Seconds())
-	
-	log.Printf("Recorded UP status for %s (Latency: %dms)", target, s.LastLatency)
 }
 
 func (m *Metrics) RecordDown(target string, duration time.Duration) {
@@ -80,8 +77,6 @@ func (m *Metrics) RecordDown(target string, duration time.Duration) {
 	// Prometheus updates
 	m.upGauge.WithLabelValues(target).Set(0)
 	m.latencyHist.WithLabelValues(target).Observe(duration.Seconds())
-	
-	log.Printf("Recorded DOWN status for %s (Latency: %dms)", target, s.LastLatency)
 }
 
 func (m *Metrics) GetStats() map[string]*TargetStats {

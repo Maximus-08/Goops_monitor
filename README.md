@@ -117,6 +117,7 @@ Override config.json with environment variables (useful for Docker):
 | `GOOPS_WEBHOOK_URL` | Alert webhook | `https://hooks.slack.com/...` |
 | `GOOPS_ALERT_COOLDOWN` | Alert cooldown | `5m` |
 | `GOOPS_ON_FAILURE` | Remediation script | `./restart.sh` |
+| `GOOPS_LOG_JSON` | Enable JSON logging | `true` |
 
 Example:
 ```bash

@@ -1,9 +1,7 @@
 package main
 
 import (
-	"fmt"
 	"goops-monitor/runner"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,10 +13,15 @@ import (
 var metrics *Metrics
 
 func main() {
+	// Initialize structured logger (JSON format for production)
+	jsonFormat := os.Getenv("GOOPS_LOG_JSON") == "true"
+	InitLogger(jsonFormat)
+
 	// Load configuration
 	cfg, err := LoadConfig("config.json")
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		LogError("Failed to load config", "error", err)
+		os.Exit(1)
 	}
 
 	// Initialize metrics
@@ -27,7 +30,10 @@ func main() {
 	// Initialize alerter
 	alerter := NewAlerter(cfg.WebhookURL, cfg.AlertCooldown)
 
-	fmt.Printf("Starting monitor for %d targets with interval %v\n", len(cfg.Targets), cfg.Interval)
+	LogInfo("Starting monitor",
+		"targets", len(cfg.Targets),
+		"interval", cfg.Interval.String(),
+	)
 
 	// Start API server
 	go StartAPI(":8081")
@@ -55,9 +61,11 @@ func main() {
 			}
 			wg.Wait()
 		case <-sigChan:
-			fmt.Println("\nShutting down gracefully...")
+			LogInfo("Shutting down gracefully")
 			stats := metrics.GetStats()
-			fmt.Printf("Final stats: %+v\n", stats)
+			for target, s := range stats {
+				LogInfo("Final stats", "target", target, "ups", s.Ups, "downs", s.Downs)
+			}
 			return
 		}
 	}
@@ -71,7 +79,7 @@ func checkStatus(target string, onFailure string, maxRetries int, alerter *Alert
 	
 	for i := 0; i <= maxRetries; i++ {
 		if i > 0 {
-			log.Printf("Retrying check for %s (%d/%d)...", target, i, maxRetries)
+			LogInfo("Retrying check", "target", target, "attempt", i, "max", maxRetries)
 			time.Sleep(1 * time.Second)
 		}
 		
@@ -84,7 +92,7 @@ func checkStatus(target string, onFailure string, maxRetries int, alerter *Alert
 	duration := time.Since(start)
 	
 	if err != nil {
-		log.Printf("DOWN: %s (%v) - Latency: %v", target, err, duration)
+		LogError("Target DOWN", "target", target, "error", err.Error(), "latency_ms", duration.Milliseconds())
 		metrics.RecordDown(target, duration)
 		alerter.SendAlert(target, err.Error())
 		executeRemediation(onFailure)
@@ -93,12 +101,12 @@ func checkStatus(target string, onFailure string, maxRetries int, alerter *Alert
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		log.Printf("UP: %s (Status: %d) - Latency: %v", target, resp.StatusCode, duration)
+		LogInfo("Target UP", "target", target, "status", resp.StatusCode, "latency_ms", duration.Milliseconds())
 		metrics.RecordUp(target, duration)
 	} else {
-		log.Printf("DOWN: %s (Status: %d) - Latency: %v", target, resp.StatusCode, duration)
+		LogError("Target DOWN", "target", target, "status", resp.StatusCode, "latency_ms", duration.Milliseconds())
 		metrics.RecordDown(target, duration)
-		alerter.SendAlert(target, fmt.Sprintf("Status code: %d", resp.StatusCode))
+		alerter.SendAlert(target, "Status code: "+http.StatusText(resp.StatusCode))
 		executeRemediation(onFailure)
 	}
 }
@@ -108,9 +116,9 @@ func executeRemediation(script string) {
 		return
 	}
 	
-	log.Printf("Executing remediation: %s", script)
+	LogInfo("Executing remediation", "script", script)
 	r := runner.New("sh", "-c", script)
 	if err := r.Execute(); err != nil {
-		log.Printf("Remediation failed: %v", err)
+		LogError("Remediation failed", "script", script, "error", err.Error())
 	}
 }

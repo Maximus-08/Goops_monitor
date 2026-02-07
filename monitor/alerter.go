@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -47,15 +46,15 @@ func (a *Alerter) SendAlert(target string, message string) {
 		body, _ := json.Marshal(payload)
 		resp, err := http.Post(a.webhookURL, "application/json", bytes.NewBuffer(body))
 		if err != nil {
-			log.Printf("Failed to send alert: %v", err)
+			LogError("Failed to send alert", "error", err.Error())
 			return
 		}
 		defer resp.Body.Close()
 		
 		if resp.StatusCode >= 400 {
-			log.Printf("Webhook failed with status: %d", resp.StatusCode)
+			LogError("Webhook failed", "status", resp.StatusCode)
 		} else {
-			log.Printf("Alert sent for %s", target)
+			LogInfo("Alert sent", "target", target)
 		}
 	}()
 }

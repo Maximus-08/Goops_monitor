@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -13,9 +12,9 @@ func StartAPI(port string) {
 	http.HandleFunc("/metrics", handleMetrics)
 	http.HandleFunc("/status", handleStatus)
 	
-	log.Printf("Starting API server on %s", port)
+	LogInfo("Starting API server", "port", port)
 	if err := http.ListenAndServe(port, nil); err != nil {
-		log.Printf("API server failed: %v", err)
+		LogError("API server failed", "error", err.Error())
 	}
 }
 
