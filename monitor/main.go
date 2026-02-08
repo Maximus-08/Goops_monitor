@@ -11,6 +11,9 @@ import (
 )
 
 var metrics *Metrics
+var httpClient = &http.Client{
+	Timeout: 10 * time.Second,
+}
 
 func main() {
 	// Initialize structured logger (JSON format for production)
@@ -18,9 +21,13 @@ func main() {
 	InitLogger(jsonFormat)
 
 	// Load configuration
-	cfg, err := LoadConfig("config.json")
+	configPath := os.Getenv("GOOPS_CONFIG")
+	if configPath == "" {
+		configPath = "config.json"
+	}
+	cfg, err := LoadConfig(configPath)
 	if err != nil {
-		LogError("Failed to load config", "error", err)
+		LogError("Failed to load config", "error", err, "path", configPath)
 		os.Exit(1)
 	}
 
@@ -36,7 +43,11 @@ func main() {
 	)
 
 	// Start API server
-	go StartAPI(":8081")
+	apiPort := os.Getenv("GOOPS_API_PORT")
+	if apiPort == "" {
+		apiPort = ":8081"
+	}
+	go StartAPI(apiPort)
 
 	// Start a local test server for demonstration
 	go startServer(":8080")
@@ -83,7 +94,7 @@ func checkStatus(target string, onFailure string, maxRetries int, alerter *Alert
 			time.Sleep(1 * time.Second)
 		}
 		
-		resp, err = http.Get(target + "/health")
+		resp, err = httpClient.Get(target + "/health")
 		if err == nil {
 			break
 		}

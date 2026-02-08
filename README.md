@@ -118,11 +118,22 @@ Override config.json with environment variables (useful for Docker):
 | `GOOPS_ALERT_COOLDOWN` | Alert cooldown | `5m` |
 | `GOOPS_ON_FAILURE` | Remediation script | `./restart.sh` |
 | `GOOPS_LOG_JSON` | Enable JSON logging | `true` |
+| `GOOPS_CONFIG` | Config file path | `/app/config.json` |
+| `GOOPS_API_PORT` | API server port | `:9090` |
 
 Example:
 ```bash
 GOOPS_TARGETS="http://myservice:8080" GOOPS_INTERVAL="30s" ./monitor_bin
 ```
+
+## API Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `/metrics` | Prometheus metrics |
+| `/status` | JSON status with uptime percentage |
+| `/ready` | Kubernetes readiness probe |
+| `/live` | Kubernetes liveness probe |
 
 ## Usage Examples
 

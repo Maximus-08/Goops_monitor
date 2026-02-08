@@ -2,13 +2,13 @@ package runner
 
 import (
 	"errors"
-	"log"
 	"os/exec"
 )
 
 type Runner struct {
 	Command string
 	Args    []string
+	Output  string
 }
 
 func New(cmd string, args ...string) *Runner {
@@ -24,13 +24,12 @@ func (r *Runner) Execute() error {
 	}
 
 	cmd := exec.Command(r.Command, r.Args...)
-	log.Printf("Executing command: %s", r.Command)
 	
 	output, err := cmd.CombinedOutput()
+	r.Output = string(output)
 	if err != nil {
 		return err
 	}
 	
-	log.Printf("Output: %s", string(output))
 	return nil
 }
